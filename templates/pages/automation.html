@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}NexusCRM — Automation Rules{% endblock %}
+{% block page_header %}Rules Engine{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Active Webhooks & Triggers</div>
+      <div class="card-subtitle">Click a status badge to live-toggle via HTMX POST — no page reload</div>
+    </div>
+    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:#60A5FA;">
+      {{ rules|selectattr('is_active')|list|length }} / {{ rules|length }} Active
+    </span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Rule Name</th>
+          <th>Trigger Event</th>
+          <th>Execution Action</th>
+          <th>State</th>
+        </tr>
+      </thead>
+      <tbody id="rules-tbody">
+        {% for rule in rules %}
+        <tr>
+          <td style="font-weight:600;color:#fff;">{{ rule.rule_name }}</td>
+          <td><span class="tag smb">{{ rule.trigger_event }}</span></td>
+          <td style="color:#9CA3AF;">{{ rule.action_execution }}</td>
+          <td>
+            <button
+              hx-post="/automation/toggle/{{ rule.id }}"
+              hx-target="body"
+              hx-swap="innerHTML"
+              style="cursor:pointer;border:none;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;
+                background:{% if rule.is_active %}rgba(16,185,129,.12){% else %}rgba(107,114,128,.12){% endif %};
+                color:{% if rule.is_active %}#10B981{% else %}#6B7280{% endif %};">
+              {% if rule.is_active %}✓ Active{% else %}⏸ Paused{% endif %}
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── API DESIGN REFERENCE ──────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <div><div class="card-title">API Design Reference</div><div class="card-subtitle">All FastAPI endpoints · auto-documented at /docs</div></div>
+    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(52,211,153,.12);color:#34D399;">OpenAPI 3.1</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Method</th><th>Endpoint</th><th>Returns</th><th>Cache</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        {% set endpoints = [
+          ("GET",  "/",                     "Full HTML","60 s","Dashboard with KPI aggregates"),
+          ("GET",  "/contacts",             "Full HTML","—",   "Contacts ordered by ML score"),
+          ("GET",  "/pipeline",             "Full HTML","—",   "Kanban matrix from PostgreSQL"),
+          ("GET",  "/activities",           "Full HTML","—",   "Audit log · 50 latest rows"),
+          ("GET",  "/reports",              "Full HTML","—",   "BI charts + DB schema view"),
+          ("GET",  "/automation",           "Full HTML","—",   "Automation rules table"),
+          ("POST", "/deal/advance/{id}",    "Partial HTML","—","HTMX: advance deal stage"),
+          ("POST", "/automation/toggle/{id}","Full HTML","—",  "HTMX: toggle rule is_active"),
+          ("GET",  "/api/chart_data",       "JSON",    "30 s","Stage counts for Chart.js"),
+          ("GET",  "/api/kpis",             "JSON",    "—",   "Raw KPI numbers"),
+          ("GET",  "/api/rescore",          "JSON",    "—",   "Re-run Scikit-Learn scorer"),
+        ] %}
+        {% for method, path, returns, cache, desc in endpoints %}
+        <tr>
+          <td>
+            <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;font-family:monospace;
+              background:{% if method=='GET' %}rgba(59,130,246,.12);color:#60A5FA{% else %}rgba(139,92,246,.12);color:#A78BFA{% endif %};">
+              {{ method }}
+            </span>
+          </td>
+          <td style="font-family:monospace;font-size:12px;color:#34D399;">{{ path }}</td>
+          <td style="font-size:12px;color:#9CA3AF;">{{ returns }}</td>
+          <td style="font-size:12px;color:{% if cache != '—' %}#F59E0B{% else %}#4B5563{% endif %};">{{ cache }}</td>
+          <td style="font-size:12.5px;color:#D1D5DB;">{{ desc }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

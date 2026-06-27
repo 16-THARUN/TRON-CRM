@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}NexusCRM — BI Reports{% endblock %}
+{% block page_header %}BI Reports & Forecasting{% endblock %}
+
+{% block content %}
+<div class="grid-3">
+  {# Rep Leaderboard #}
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Rep Leaderboard</div><div class="card-subtitle">Q2 closed revenue</div></div>
+    </div>
+    {% for rep, val, color, pct in [("AK","₹680K","#3B82F6",100),("PR","₹520K","#14B8A6",76),("NM","₹420K","#8B5CF6",62),("SR","₹280K","#F59E0B",41)] %}
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div style="width:24px;height:24px;border-radius:50%;background:{{ color }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;">{{ rep }}</div>
+        <span style="font-size:13px;color:#9CA3AF;flex:1;">Rep {{ rep }}</span>
+        <span style="font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;color:{{ color }};">{{ val }}</span>
+      </div>
+      <div style="height:5px;background:#1C2A40;border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:{{ pct }}%;background:{{ color }};border-radius:3px;"></div>
+      </div>
+    </div>
+    {% endfor %}
+    <div style="position:relative;height:160px;margin-top:16px;">
+      <canvas id="repDonut"></canvas>
+    </div>
+  </div>
+
+  {# Conversion Funnel #}
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Conversion Funnel</div><div class="card-subtitle">Leads → Closed Won</div></div>
+    </div>
+    <div style="position:relative;height:220px;">
+      <canvas id="funnelChart"></canvas>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
+      <span style="font-size:12px;color:#9CA3AF;">Overall conversion</span>
+      <span style="font-size:13px;color:#10B981;font-weight:600;font-family:'Space Grotesk',sans-serif;">1.5%</span>
+    </div>
+  </div>
+
+  {# Engagement Heatmap #}
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Engagement Heatmap</div><div class="card-subtitle">Email opens · last 5 weeks</div></div>
+    </div>
+    <div id="heatmap-container"></div>
+  </div>
+</div>
+
+{# ── DB SCHEMA CARD ───────────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">PostgreSQL Schema — Entity Relationship</div>
+      <div class="card-subtitle">Auto-generated via Alembic · alembic revision --autogenerate</div>
+    </div>
+    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(20,184,166,.12);color:#14B8A6;">PostgreSQL</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+    {% set tables = [
+      ("contacts", "#3B82F6", [("id","INTEGER PK"),("lead_name","VARCHAR(120)"),("company_name","VARCHAR(120)"),("segment","VARCHAR(30)"),("status","VARCHAR(20)"),("score","INTEGER"),("value","FLOAT"),("email_opens","INTEGER"),("page_visits","INTEGER"),("calls_made","INTEGER"),("response_rate","FLOAT"),("created_at","TIMESTAMP")]),
+      ("deals", "#14B8A6", [("id","INTEGER PK"),("contact_id","INTEGER FK→contacts"),("company_name","VARCHAR(120)"),("value","FLOAT"),("stage","VARCHAR(30)"),("win_probability","INTEGER"),("service_type","VARCHAR(80)"),("rep_initials","VARCHAR(5)"),("closed_at","TIMESTAMP"),("created_at","TIMESTAMP")]),
+      ("activities", "#8B5CF6", [("id","INTEGER PK"),("contact_id","INTEGER FK→contacts"),("action_type","VARCHAR(20)"),("content","TEXT"),("rep_initials","VARCHAR(5)"),("is_read","BOOLEAN"),("occurred_at","TIMESTAMP")]),
+      ("automation_rules", "#F59E0B", [("id","INTEGER PK"),("rule_name","VARCHAR(120)"),("trigger_event","VARCHAR(80)"),("action_execution","VARCHAR(200)"),("is_active","BOOLEAN"),("created_at","TIMESTAMP")]),
+    ] %}
+    {% for tname, color, cols in tables %}
+    <div style="background:#1C2A40;border-radius:10px;overflow:hidden;border:1px solid {{ color }}25;">
+      <div style="background:{{ color }}18;border-bottom:1px solid {{ color }}30;padding:10px 14px;">
+        <div style="font-size:12px;font-weight:700;color:{{ color }};letter-spacing:.5px;">📋 {{ tname }}</div>
+      </div>
+      <div style="padding:10px 14px;">
+        {% for col, dtype in cols %}
+        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:8px;">
+          <span style="font-size:11.5px;font-weight:{% if 'PK' in dtype or 'FK' in dtype %}600{% else %}400{% endif %};color:{% if 'PK' in dtype %}{{ color }}{% elif 'FK' in dtype %}#A78BFA{% else %}#D1D5DB{% endif %};">{{ col }}</span>
+          <span style="font-size:10px;color:#6B7280;white-space:nowrap;">{{ dtype }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {# ER Relationship lines #}
+  <div style="margin-top:20px;padding:16px;background:#1C2A40;border-radius:10px;font-family:monospace;font-size:12px;line-height:2;color:#9CA3AF;">
+    <span style="color:#60A5FA;">contacts</span>.id &nbsp;──1────*──&gt; <span style="color:#14B8A6;">deals</span>.contact_id &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6B7280;"># One contact, many deals</span><br>
+    <span style="color:#60A5FA;">contacts</span>.id &nbsp;──1────*──&gt; <span style="color:#8B5CF6;">activities</span>.contact_id &nbsp;<span style="color:#6B7280;"># Immutable audit trail</span><br>
+    <span style="color:#F59E0B;">automation_rules</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#6B7280;"># Standalone config table</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+new Chart(document.getElementById('repDonut'), {
+  type:'doughnut',
+  data:{ labels:['AK','PR','NM','SR'],
+    datasets:[{ data:[36,28,22,14], backgroundColor:['#3B82F6','#14B8A6','#8B5CF6','#F59E0B'],
+      borderWidth:2, borderColor:'#111827', hoverOffset:6 }] },
+  options:{ responsive:true, maintainAspectRatio:false, cutout:'72%',
+    plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1C2A40', borderColor:'#374151',
+      borderWidth:1, titleColor:'#F9FAFB', bodyColor:'#9CA3AF',
+      callbacks:{label:c=>' Rep '+c.label+': '+c.parsed+'%'} } } }
+});
+
+new Chart(document.getElementById('funnelChart'), {
+  type:'bar',
+  data:{ labels:['Leads','Qualified','Demo','Proposal','Negotiate','Closed'],
+    datasets:[{ data:[1240,487,218,94,38,19],
+      backgroundColor:['#374151','#3B82F6','#8B5CF6','#14B8A6','#F59E0B','#10B981'],
+      borderRadius:4, borderSkipped:false, barPercentage:0.7 }] },
+  options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1C2A40',
+      borderColor:'#374151', borderWidth:1, titleColor:'#F9FAFB', bodyColor:'#9CA3AF' } },
+    scales:{ x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6B7280',font:{size:11}}},
+             y:{grid:{display:false},ticks:{color:'#9CA3AF',font:{size:12}}} } }
+});
+
+(function buildHeatmap() {
+  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const weeks=['W1','W2','W3','W4','W5'];
+  const data=[[45,72,38,90,55,20,12],[60,85,50,78,92,15,8],[30,65,88,45,70,25,5],[75,55,40,95,62,18,10],[50,80,66,85,40,22,7]];
+  const colors=['#1C2A40','#1e3a5f','#1d4ed8','#2563eb','#3b82f6','#60a5fa','#93c5fd'];
+  const c=document.getElementById('heatmap-container');
+  const hr=document.createElement('div');
+  hr.style.cssText='display:grid;grid-template-columns:28px repeat(7,1fr);gap:4px;margin-bottom:4px;';
+  hr.innerHTML='<div></div>'+days.map(d=>`<div style="font-size:10px;color:#6B7280;text-align:center;">${d}</div>`).join('');
+  c.appendChild(hr);
+  weeks.forEach((w,wi)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:28px repeat(7,1fr);gap:4px;margin-bottom:4px;';
+    const lbl=document.createElement('div');
+    lbl.style.cssText='font-size:10px;color:#6B7280;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;';
+    lbl.textContent=w; row.appendChild(lbl);
+    days.forEach((_,di)=>{
+      const val=data[wi][di];
+      const idx=Math.floor((val/100)*(colors.length-1));
+      const cell=document.createElement('div');
+      cell.style.cssText=`aspect-ratio:1;border-radius:3px;background:${colors[Math.min(idx,colors.length-1)]};cursor:default;transition:transform .1s;`;
+      cell.title=`${w} ${days[di]}: ${val} opens`;
+      cell.addEventListener('mouseenter',()=>cell.style.transform='scale(1.15)');
+      cell.addEventListener('mouseleave',()=>cell.style.transform='scale(1)');
+      row.appendChild(cell);
+    });
+    c.appendChild(row);
+  });
+  const leg=document.createElement('div');
+  leg.style.cssText='display:flex;align-items:center;gap:4px;margin-top:10px;';
+  leg.innerHTML=`<span style="font-size:10px;color:#6B7280;margin-right:4px;">Low</span>${colors.map(x=>`<div style="width:16px;height:10px;border-radius:2px;background:${x};"></div>`).join('')}<span style="font-size:10px;color:#6B7280;margin-left:4px;">High</span>`;
+  c.appendChild(leg);
+})();
+</script>
+{% endblock %}

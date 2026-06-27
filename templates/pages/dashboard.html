@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}NexusCRM — Executive Dashboard{% endblock %}
+{% block page_header %}Executive Dashboard{% endblock %}
+
+{% block content %}
+
+{# ── KPI STRIP ──────────────────────────────────────────────────────────── #}
+<div class="kpi-grid">
+  {% set kpi_items = [
+    { "label": "Pipeline Value",    "value": kpis.pipeline_value, "delta": "↑ 12.4%", "up": true,  "color": "blue",   "icon": "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6", "spark": "spark1" },
+    { "label": "Win Rate",          "value": kpis.win_rate,       "delta": "↑ 8.1%",  "up": true,  "color": "teal",   "icon": "M22 7 13.5 15.5 8.5 10.5 2 17M16 7h6v6",                     "spark": "spark2" },
+    { "label": "Avg. Deal Cycle",   "value": kpis.avg_cycle,      "delta": "↓ 2.3%",  "up": false, "color": "purple", "icon": "M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zM12 6v6l4 2", "spark": "spark3" },
+    { "label": "Active Contacts",   "value": kpis.active_contacts,"delta": "↑ 31",    "up": true,  "color": "amber",  "icon": "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75", "spark": "spark4" }
+  ] %}
+
+  {% for k in kpi_items %}
+  <div class="kpi-card {{ k.color }}">
+    <div class="kpi-header">
+      <div class="kpi-icon {{ k.color }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="{{ k.icon }}"/>
+        </svg>
+      </div>
+      <span class="kpi-delta {{ 'up' if k.up else 'down' }}">{{ k.delta }}</span>
+    </div>
+    <div class="kpi-value">{{ k.value }}</div>
+    <div class="kpi-label">{{ k.label }}</div>
+    <div class="kpi-sparkline" style="margin-top:14px;height:36px;">
+      <canvas id="{{ k.spark }}" height="36"></canvas>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── REVENUE CHART + QUOTA RING ──────────────────────────────────────────── #}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Revenue vs Forecast</div>
+        <div class="card-subtitle">Jan – Jun 2026 · Monthly breakdown</div>
+      </div>
+      <div style="display:flex;gap:16px;">
+        <span style="font-size:12px;color:#9CA3AF;display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;background:#3B82F6;display:inline-block;"></span>Actual</span>
+        <span style="font-size:12px;color:#9CA3AF;display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:2px;border:1px dashed #8B5CF6;display:inline-block;"></span>Forecast</span>
+      </div>
+    </div>
+    <div style="position:relative;height:230px;width:100%;">
+      <canvas id="revChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Q2 Quota Attainment</div>
+        <div class="card-subtitle">Team performance by segment</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 12px;">
+      <svg width="140" height="140" viewBox="0 0 140 140">
+        <circle cx="70" cy="70" r="56" fill="none" stroke="#1C2A40" stroke-width="14"/>
+        <circle cx="70" cy="70" r="56" fill="none" stroke="#3B82F6" stroke-width="14" stroke-dasharray="352" stroke-dashoffset="77" stroke-linecap="round" transform="rotate(-90 70 70)"/>
+        <circle cx="70" cy="70" r="40" fill="none" stroke="#1C2A40" stroke-width="10"/>
+        <circle cx="70" cy="70" r="40" fill="none" stroke="#14B8A6" stroke-width="10" stroke-dasharray="251" stroke-dashoffset="68" stroke-linecap="round" transform="rotate(-90 70 70)"/>
+        <text x="70" y="65" text-anchor="middle" fill="#F9FAFB" font-family="Space Grotesk,sans-serif" font-size="20" font-weight="700">78%</text>
+        <text x="70" y="82" text-anchor="middle" fill="#9CA3AF" font-family="Inter,sans-serif" font-size="10">of quota</text>
+      </svg>
+      <div style="display:flex;justify-content:space-around;width:100%;margin-top:14px;">
+        {% for stat in [("₹1.42M","Closed"),("₹1.82M","Target"),("₹392K","Gap")] %}
+        <div style="text-align:center;">
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#F9FAFB;">{{ stat[0] }}</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ stat[1] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% for seg in [("Enterprise","91%","#3B82F6",91),("Mid-Market","73%","#14B8A6",73),("SMB","58%","#F59E0B",58)] %}
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+        <span style="font-size:13px;color:#9CA3AF;">{{ seg[0] }}</span>
+        <span style="font-size:13px;font-weight:600;font-family:'Space Grotesk',sans-serif;color:{{ seg[2] }};">{{ seg[1] }}</span>
+      </div>
+      <div style="height:6px;background:#1C2A40;border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:{{ seg[3] }}%;background:{{ seg[2] }};border-radius:3px;"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ── SYSTEM ARCHITECTURE DIVIDER ─────────────────────────────────────────── #}
+<div class="section-divider">System Architecture — Advanced Tech Stack</div>
+
+{# ── TECH STACK TABLE ────────────────────────────────────────────────────── #}
+<div class="card" style="padding:28px 32px;">
+  <div class="card-header" style="margin-bottom:24px;">
+    <div>
+      <div class="card-title" style="font-size:17px;">Advanced Tech Stack Summary</div>
+      <div class="card-subtitle">Architecture powering NexusCRM Pipeline Intelligence</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(16,185,129,0.12);color:#10B981;">Production Ready</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(59,130,246,0.12);color:#60A5FA;">v2.4.0</span>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:160px;">Layer</th>
+          <th style="width:220px;">Technology</th>
+          <th>Why It Matters</th>
+          <th style="width:140px;text-align:center;">Maturity</th>
+        </tr>
+      </thead>
+      <tbody id="stack-tbody"></tbody>
+    </table>
+  </div>
+
+  {# ── DATA FLOW DIAGRAM ──────────────────────────────────────────────── #}
+  <div style="margin-top:28px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.07);">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:#6B7280;margin-bottom:16px;">Data Flow Architecture</div>
+    <div id="arch-flow" style="display:flex;align-items:center;gap:0;overflow-x:auto;padding-bottom:4px;"></div>
+  </div>
+
+  {# ── BOTTOM STAT STRIP ──────────────────────────────────────────────── #}
+  <div style="margin-top:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+    {% for stat in [("99.8%","API Uptime","#3B82F6"),("<40ms","Avg. Response","#14B8A6"),("94%","ML Score Accuracy","#8B5CF6"),("0-DDL","Schema Migrations","#F59E0B")] %}
+    <div style="background:#1C2A40;border-radius:10px;padding:14px 16px;text-align:center;">
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:{{ stat[2] }};">{{ stat[0] }}</div>
+      <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">{{ stat[1] }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .kpi-card { background:var(--navy-2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s,transform .15s; }
+  .kpi-card:hover { border-color:var(--border-2);transform:translateY(-2px); }
+  .kpi-card::before { content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
+  .kpi-card.blue::before { background:#3B82F6; } .kpi-card.teal::before { background:#14B8A6; }
+  .kpi-card.purple::before { background:#8B5CF6; } .kpi-card.amber::before { background:#F59E0B; }
+  .kpi-header { display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px; }
+  .kpi-icon { width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center; }
+  .kpi-icon svg { width:18px;height:18px; }
+  .kpi-icon.blue { background:rgba(59,130,246,.15);color:#60A5FA; }
+  .kpi-icon.teal { background:rgba(20,184,166,.15);color:#14B8A6; }
+  .kpi-icon.purple { background:rgba(139,92,246,.15);color:#8B5CF6; }
+  .kpi-icon.amber { background:rgba(245,158,11,.15);color:#F59E0B; }
+  .kpi-delta { font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:20px; }
+  .kpi-delta.up { background:rgba(16,185,129,.15);color:#10B981; }
+  .kpi-delta.down { background:rgba(244,63,94,.15);color:#F43F5E; }
+  .kpi-value { font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1.1;margin-bottom:4px; }
+  .kpi-label { font-size:12.5px;color:#9CA3AF; }
+</style>
+<script>
+// ── SPARKLINES ─────────────────────────────────────────────────────────────
+function sparkline(id, data, color) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  new Chart(canvas, {
+    type: 'line',
+    data: { labels: data.map((_,i)=>i), datasets: [{ data, borderColor: color, borderWidth: 1.5,
+      fill: true, backgroundColor: color+'18', pointRadius: 0, tension: 0.4 }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false}}, animation:{duration:800} }
+  });
+}
+sparkline('spark1',[210,245,230,280,260,310,295,340,320,380],'#3B82F6');
+sparkline('spark2',[60,63,58,65,64,67,65,69,68,68],'#14B8A6');
+sparkline('spark3',[28,27,26,25,27,24,25,23,24,24],'#8B5CF6');
+sparkline('spark4',[780,790,800,810,805,815,820,830,840,847],'#F59E0B');
+
+// ── REVENUE CHART ──────────────────────────────────────────────────────────
+const revChartEl = document.getElementById('revChart');
+if (revChartEl) {
+  new Chart(revChartEl, {
+    type:'bar',
+    data:{
+      labels:['Jan','Feb','Mar','Apr','May','Jun'],
+      datasets:[
+        { label:'Actual', data:[380,420,395,510,490,560], backgroundColor:'#3B82F6', borderRadius:5, borderSkipped:false, barPercentage:0.5 },
+        { label:'Forecast', data:[360,410,420,480,520,540], type:'line', borderColor:'#8B5CF6', borderDash:[5,4],
+          borderWidth:2, pointRadius:4, pointBackgroundColor:'#8B5CF6', tension:0.3, fill:false, backgroundColor:'transparent' }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1C2A40', borderColor:'#374151', borderWidth:1,
+        titleColor:'#F9FAFB', bodyColor:'#9CA3AF', callbacks:{label:c=>' ₹'+c.parsed.y+'K'} } },
+      scales:{ x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6B7280',font:{family:'Inter',size:12}}},
+               y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#6B7280',font:{family:'Inter',size:12},callback:v=>'₹'+v+'K'}} }
+    }
+  });
+}
+
+// ── TECH STACK TABLE ────────────────────────────────────────────────────────
+const STACK = [
+  { layer:'Backend',              icon:'M13 10V3L4 14h7v7l9-11h-7z',     iconColor:'#3B82F6', iconBg:'rgba(59,130,246,.12)',
+    tech:'FastAPI (Async/Await)', detail:'Python 3.11 · OpenAPI auto-docs · uvicorn',
+    tags:['Async I/O','OpenAPI'],tagColors:['#3B82F6','#60A5FA'],
+    why:'Non-blocking coroutines handle thousands of concurrent HTMX requests. Every route auto-documents to /docs without any extra code.',
+    maturity:98, color:'#3B82F6', badge:'Stable' },
+
+  { layer:'Database',             icon:'M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0 2 1 3 3 3h10c2 0 3-1 3-3M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3',
+    iconColor:'#14B8A6', iconBg:'rgba(20,184,166,.12)',
+    tech:'PostgreSQL + SQLAlchemy', detail:'asyncpg driver · Alembic migrations · Connection pooling',
+    tags:['ACID','Alembic','asyncpg'],tagColors:['#14B8A6','#0D9488','#059669'],
+    why:'ACID-compliant store for all CRM records. Alembic auto-generates migration scripts by diffing ORM models vs live schema — zero manual SQL.',
+    maturity:95, color:'#14B8A6', badge:'Stable' },
+
+  { layer:'Frontend Interaction', icon:'M13 10V3L4 14h7v7l9-11h-7z',     iconColor:'#8B5CF6', iconBg:'rgba(139,92,246,.12)',
+    tech:'HTMX (Dynamic partial updates)', detail:'hx-post · hx-target · hx-swap · No JS bundle',
+    tags:['Hypermedia','SSR','Partial'],tagColors:['#8B5CF6','#A78BFA','#7C3AED'],
+    why:'Clicking a deal card sends a POST to FastAPI and swaps only the Kanban matrix HTML — no full page reload, no React overhead, <2KB of JS.',
+    maturity:88, color:'#8B5CF6', badge:'Active' },
+
+  { layer:'Styles',               icon:'M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z',
+    iconColor:'#06B6D4', iconBg:'rgba(6,182,212,.12)',
+    tech:'Tailwind CSS (Component-driven)', detail:'Utility-first · JIT · Dark mode built-in',
+    tags:['Utility-first','JIT'],tagColors:['#06B6D4','#0E7490'],
+    why:'JIT compiler strips unused CSS at build time — final stylesheet is under 8 KB. Design tokens (CSS vars) allow instant theme changes.',
+    maturity:97, color:'#06B6D4', badge:'Stable' },
+
+  { layer:'Analytics',            icon:'M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2z',
+    iconColor:'#F59E0B', iconBg:'rgba(245,158,11,.12)',
+    tech:'Pandas + Scikit-Learn', detail:'GradientBoostingClassifier · 6 signals · Nightly rescore',
+    tags:['ML Scoring','Pandas','sklearn'],tagColors:['#F59E0B','#D97706','#B45309'],
+    why:'GradientBoostingClassifier trained on 6 engagement signals per contact. predict_proba × 100 gives the lead score. Runs nightly via /api/rescore.',
+    maturity:91, color:'#F59E0B', badge:'Active' },
+];
+
+(function buildStack() {
+  const tbody = document.getElementById('stack-tbody');
+  STACK.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.style.cssText = 'transition:background .12s;cursor:default;';
+    tr.addEventListener('mouseenter', ()=>{tr.style.background='#1C2A40';});
+    tr.addEventListener('mouseleave', ()=>{tr.style.background='transparent';});
+    const tags = r.tags.map((t,i)=>`<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:${r.tagColors[i]}18;color:${r.tagColors[i]};margin-right:4px;">${t}</span>`).join('');
+    const badge = r.badge==='Stable'
+      ? `<span style="font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(16,185,129,.1);color:#10B981;">${r.badge}</span>`
+      : `<span style="font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(59,130,246,.1);color:#60A5FA;">${r.badge}</span>`;
+    tr.innerHTML = `
+      <td style="padding:16px 12px 16px 0;vertical-align:top;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div style="width:32px;height:32px;border-radius:8px;background:${r.iconBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${r.iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${r.icon}"/></svg>
+          </div>
+          <span style="font-size:12.5px;font-weight:600;color:#D1D5DB;">${r.layer}</span>
+        </div>
+      </td>
+      <td style="padding:16px 12px;vertical-align:top;">
+        <div style="font-size:13.5px;font-weight:600;color:#F9FAFB;margin-bottom:3px;">${r.tech}</div>
+        <div style="font-size:11.5px;color:#6B7280;margin-bottom:7px;">${r.detail}</div>
+        ${tags}
+      </td>
+      <td style="padding:16px 12px;vertical-align:top;">
+        <div style="font-size:13px;color:#9CA3AF;line-height:1.6;max-width:380px;">${r.why}</div>
+      </td>
+      <td style="padding:16px 0;vertical-align:top;text-align:center;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="flex:1;height:4px;background:#1C2A40;border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${r.maturity}%;background:${r.color};border-radius:2px;"></div>
+          </div>
+          <span style="font-size:11.5px;font-weight:600;color:${r.color};font-family:'Space Grotesk',sans-serif;min-width:28px;">${r.maturity}%</span>
+        </div>
+        ${badge}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+})();
+
+// ── DATA FLOW ARCH ─────────────────────────────────────────────────────────
+(function buildFlow() {
+  const nodes = [
+    {label:'Browser',       sub:'HTMX + Tailwind',     color:'#8B5CF6', bg:'rgba(139,92,246,.12)'},
+    {label:'FastAPI',       sub:'Async routes',         color:'#3B82F6', bg:'rgba(59,130,246,.12)'},
+    {label:'SQLAlchemy',    sub:'ORM + asyncpg',        color:'#14B8A6', bg:'rgba(20,184,166,.12)'},
+    {label:'PostgreSQL',    sub:'Persistent store',     color:'#06B6D4', bg:'rgba(6,182,212,.12)'},
+    {label:'Pandas/sklearn',sub:'ML lead scoring',      color:'#F59E0B', bg:'rgba(245,158,11,.12)'},
+    {label:'Dashboard UI',  sub:'Live Kanban + charts', color:'#10B981', bg:'rgba(16,185,129,.12)'},
+  ];
+  const flow = document.getElementById('arch-flow');
+  nodes.forEach((n, i) => {
+    const node = document.createElement('div');
+    node.style.cssText = `flex:0 0 auto;background:${n.bg};border:1px solid ${n.color}30;border-radius:10px;padding:12px 16px;min-width:120px;text-align:center;transition:transform .15s,border-color .15s;cursor:default;`;
+    node.addEventListener('mouseenter',()=>{node.style.transform='translateY(-3px)';node.style.borderColor=n.color+'80';});
+    node.addEventListener('mouseleave',()=>{node.style.transform='translateY(0)';node.style.borderColor=n.color+'30';});
+    node.innerHTML = `<div style="font-size:13px;font-weight:600;color:${n.color};margin-bottom:3px;">${n.label}</div><div style="font-size:10.5px;color:#6B7280;">${n.sub}</div>`;
+    flow.appendChild(node);
+    if (i < nodes.length - 1) {
+      const arr = document.createElement('div');
+      arr.style.cssText = 'flex:0 0 auto;display:flex;align-items:center;padding:0 5px;';
+      arr.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+      flow.appendChild(arr);
+    }
+  });
+})();
+</script>
+{% endblock %}

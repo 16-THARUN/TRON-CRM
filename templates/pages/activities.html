@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}NexusCRM — Audit Log{% endblock %}
+{% block page_header %}Enterprise Audit Log{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Real-Time Activity Stream</div>
+      <div class="card-subtitle">Asynchronous transaction logs from PostgreSQL · activities table</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(59,130,246,.12);color:#60A5FA;">
+        {{ logs|length }} events
+      </span>
+      <div class="card-action">Mark All Read</div>
+    </div>
+  </div>
+
+  <div class="activity-list" id="activity-stream">
+    {% for log in logs %}
+    <div class="activity-item">
+      <div class="act-icon {{ log.action_type }}">
+        {% if log.action_type == 'deal' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        {% elif log.action_type == 'email' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        {% elif log.action_type == 'call' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        {% else %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        {% endif %}
+      </div>
+      <div class="act-body">
+        <div class="act-text">{{ log.content | safe }}</div>
+        <div class="act-time">{{ log.occurred_at.strftime('%b %d, %Y · %I:%M %p') }} &nbsp;·&nbsp; Rep: <strong>{{ log.rep_initials }}</strong></div>
+      </div>
+      {% if not log.is_read %}
+      <div style="width:7px;height:7px;border-radius:50%;background:#3B82F6;flex-shrink:0;margin-top:6px;"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ── CACHING ARCHITECTURE EXPLAINER ────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <div><div class="card-title">Caching Strategy</div><div class="card-subtitle">services/cache.py · TTL in-process dict</div></div>
+    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(139,92,246,.12);color:#8B5CF6;">Layer 2 Cache</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#6B7280;margin-bottom:14px;">Cache Keys & TTL</div>
+      {% for key, ttl, desc, color in [
+        ("dashboard_kpis","60 s","Aggregate totals (pipeline value, win rate)","#3B82F6"),
+        ("chart_data","30 s","Stage counts for Chart.js pipeline chart","#14B8A6"),
+        ("(future) redis:*","—","Multi-worker Redis upgrade path","#8B5CF6")
+      ] %}
+      <div style="display:flex;gap:12px;padding:12px;background:#1C2A40;border-radius:8px;margin-bottom:8px;border-left:3px solid {{ color }};">
+        <div style="flex:1;">
+          <div style="font-size:12.5px;font-weight:600;color:{{ color }};font-family:monospace;">"{{ key }}"</div>
+          <div style="font-size:11.5px;color:#9CA3AF;margin-top:3px;">{{ desc }}</div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:#6B7280;white-space:nowrap;">TTL: {{ ttl }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="background:#1C2A40;border-radius:10px;padding:18px;font-family:monospace;font-size:11.5px;color:#D1D5DB;line-height:2;">
+      <div style="color:#9CA3AF;margin-bottom:8px;"># services/cache.py — write path</div>
+      <div><span style="color:#34D399;">kpis</span> = <span style="color:#60A5FA;">await</span> cache_get(<span style="color:#FBBF24;">"dashboard_kpis"</span>)</div>
+      <div><span style="color:#60A5FA;">if</span> kpis <span style="color:#60A5FA;">is None</span>:</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#9CA3AF;"># Hit PostgreSQL once</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;kpis = <span style="color:#60A5FA;">await</span> db.execute(query)</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#60A5FA;">await</span> cache_set(key, kpis, ttl=<span style="color:#FBBF24;">60</span>)</div>
+      <div>&nbsp;</div>
+      <div style="color:#9CA3AF;"># Invalidate after any write:</div>
+      <div><span style="color:#60A5FA;">await</span> cache_invalidate(<span style="color:#FBBF24;">"dashboard_kpis"</span>)</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

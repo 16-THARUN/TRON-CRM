@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}NexusCRM — Pipeline Intelligence{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0B1120;
+      --navy-2: #111827;
+      --navy-3: #1C2A40;
+      --navy-4: #253245;
+      --slate: #374151;
+      --slate-2: #4B5563;
+      --muted: #6B7280;
+      --muted-2: #9CA3AF;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-2: rgba(255, 255, 255, 0.12);
+      --accent: #3B82F6;
+      --accent-2: #60A5FA;
+      --accent-glow: rgba(59, 130, 246, 0.15);
+      --teal: #14B8A6;
+      --teal-dim: rgba(20, 184, 166, 0.15);
+      --purple: #8B5CF6;
+      --purple-dim: rgba(139, 92, 246, 0.15);
+      --amber: #F59E0B;
+      --amber-dim: rgba(245, 158, 11, 0.15);
+      --rose: #F43F5E;
+      --rose-dim: rgba(244, 63, 94, 0.15);
+      --green: #10B981;
+      --green-dim: rgba(16, 185, 129, 0.15);
+      --text-primary: #F9FAFB;
+      --text-secondary: #D1D5DB;
+      --text-muted: #9CA3AF;
+      --radius: 10px;
+      --radius-lg: 16px;
+      --sidebar-w: 240px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--text-primary);
+      display: flex;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--navy-2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50; padding: 0; }
+    .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
+    .logo-mark { display: flex; align-items: center; gap: 10px; }
+    .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .logo-icon svg { width: 18px; height: 18px; }
+    .logo-text { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.3px; color: var(--text-primary); }
+    .logo-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
+
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; }
+    .nav-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); padding: 12px 8px 6px; font-weight: 500; }
+    
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: var(--text-muted); cursor: pointer; transition: all 0.15s; font-size: 13.5px; font-weight: 450; user-select: none; text-decoration: none; }
+    .nav-item:hover { background: var(--navy-3); color: var(--text-secondary); }
+    .nav-item.active { background: var(--accent-glow); color: var(--accent-2); font-weight: 500; }
+    .nav-item svg { width: 17px; height: 17px; flex-shrink: 0; opacity: 0.85; }
+    .nav-badge { margin-left: auto; font-size: 11px; font-weight: 600; background: var(--rose); color: #fff; border-radius: 10px; padding: 1px 7px; line-height: 1.6; }
+
+    .sidebar-footer { padding: 16px 12px; border-top: 1px solid var(--border); }
+    .avatar-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+    .avatar-row:hover { background: var(--navy-3); }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0; }
+    .avatar-info { flex: 1; min-width: 0; }
+    .avatar-name { font-size: 13px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .avatar-role { font-size: 11px; color: var(--text-muted); }
+
+    /* ─── MAIN ─── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar { position: sticky; top: 0; z-index: 40; background: rgba(11, 17, 32, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; gap: 16px; }
+    .topbar-title { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; color: var(--text-primary); flex: 1; }
+    .topbar-search { display: flex; align-items: center; gap: 8px; background: var(--navy-3); border: 1px solid var(--border-2); border-radius: 8px; padding: 7px 14px; width: 240px; cursor: text; }
+    .topbar-search svg { width: 15px; height: 15px; color: var(--text-muted); flex-shrink: 0; }
+    .topbar-search span { font-size: 13px; color: var(--text-muted); }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; white-space: nowrap; }
+    .btn svg { width: 15px; height: 15px; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #2563EB; transform: translateY(-1px); }
+    .btn-ghost { background: var(--navy-3); color: var(--text-secondary); border: 1px solid var(--border-2); }
+    .btn-ghost:hover { background: var(--navy-4); }
+
+    .notif-btn { width: 36px; height: 36px; border-radius: 8px; background: var(--navy-3); border: 1px solid var(--border-2); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: background 0.15s; }
+    .notif-btn:hover { background: var(--navy-4); }
+    .notif-btn svg { width: 16px; height: 16px; color: var(--text-muted); }
+    .notif-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; background: var(--rose); border-radius: 50%; border: 2px solid var(--navy-2); }
+
+    /* ─── CONTENT ─── */
+    .content { padding: 28px 32px; display: flex; flex-direction: column; gap: 24px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+    .card { background: var(--navy-2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .card-title { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .card-action { font-size: 12px; color: var(--accent-2); cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+    .card-action svg { width: 13px; height: 13px; }
+
+    .tag { font-size: 11px; padding: 2px 7px; border-radius: 5px; font-weight: 500; }
+    .tag.enterprise { background: var(--purple-dim); color: var(--purple); border: none; }
+    .tag.smb { background: var(--teal-dim); color: var(--teal); border: none; }
+    .tag.startup { background: var(--amber-dim); color: var(--amber); border: none; }
+
+    .section-divider { display: flex; align-items: center; gap: 14px; margin: 4px 0; font-size: 11px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+    .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ─── PIPELINE MATRIX STYLES ─── */
+    .pipeline-cols { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 4px; }
+    .pipeline-cols::-webkit-scrollbar { height: 4px; }
+    .pipeline-cols::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+    .pipeline-col { flex: 0 0 168px; }
+    .pipe-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 0 2px; }
+    .pipe-stage { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+    .pipe-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .pipe-count { font-size: 11px; color: var(--text-muted); font-weight: 400; background: var(--navy-3); padding: 2px 6px; border-radius: 10px; }
+    .pipe-cards { display: flex; flex-direction: column; gap: 8px; }
+    .deal-card { background: var(--navy-3); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; cursor: pointer; transition: all 0.15s; }
+    .deal-card:hover { border-color: var(--border-2); background: var(--navy-4); transform: translateY(-1px); }
+    .deal-company { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+    .deal-value { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+    .deal-footer { display: flex; align-items: center; justify-content: space-between; }
+    .deal-avatars { display: flex; }
+    .deal-avatar { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--navy-3); margin-left: -5px; font-size: 9px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--slate); color: #fff; }
+    .deal-avatar:first-child { margin-left: 0; }
+    .deal-prob { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 10px; }
+
+    /* ─── DATA TABLE STYLES ─── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 0 12px 12px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; cursor: pointer; }
+    tbody tr:hover { background: var(--navy-3); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 13px 12px 13px 0; font-size: 13px; color: var(--text-secondary); vertical-align: middle; }
+    .lead-name { font-weight: 500; color: var(--text-primary); }
+    .lead-company { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+
+    .status-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 20px; }
+    .status-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+    .status-pill.hot { background: var(--rose-dim); color: var(--rose); }
+    .status-pill.warm { background: var(--amber-dim); color: var(--amber); }
+    .status-pill.cold { background: rgba(147, 197, 253, 0.12); color: #93C5FD; }
+    .status-pill.new { background: var(--green-dim); color: var(--green); }
+
+    .score-bar { display: flex; align-items: center; gap: 8px; }
+    .score-track { flex: 1; height: 4px; background: var(--navy-3); border-radius: 2px; overflow: hidden; min-width: 60px; }
+    .score-fill { height: 100%; border-radius: 2px; }
+
+    /* ─── ACTIVITY STREAM STYLES ─── */
+    .activity-list { display: flex; flex-direction: column; gap: 0; }
+    .activity-item { display: flex; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+    .activity-item:last-child { border-bottom: none; }
+    .act-icon { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+    .act-icon svg { width: 15px; height: 15px; }
+    .act-icon.email { background: var(--accent-glow); color: var(--accent-2); }
+    .act-icon.call { background: var(--green-dim); color: var(--green); }
+    .act-icon.deal { background: var(--purple-dim); color: var(--purple); }
+    .act-icon.note { background: var(--amber-dim); color: var(--amber); }
+    .act-body { flex: 1; min-width: 0; }
+    .act-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+    .act-text strong { color: var(--text-primary); font-weight: 500; }
+    .act-time { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+
+    @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .grid-2 { grid-template-columns: 1fr; } .grid-3 { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 768px) { :root { --sidebar-w: 0px; } .sidebar { display: none; } .main { margin-left: 0; } .content { padding: 16px; } .kpi-grid { grid-template-columns: 1fr 1fr; } .grid-3 { grid-template-columns: 1fr; } .topbar { padding: 12px 16px; } }
+  </style>
+</head>
+
+<body>
+
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3h18v4H3zM7 11h10M7 15h7" />
+            <circle cx="18" cy="18" r="4" />
+            <path d="M16 18l1.5 1.5L20 16.5" />
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">TRON-CRM</div>
+          <div class="logo-sub">Pipeline OS</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-label">Overview</div>
+
+      <a href="/" class="nav-item {% if request.url.path == '/' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+        Dashboard
+      </a>
+
+      <a href="/contacts" class="nav-item {% if request.url.path == '/contacts' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+        Contacts
+        <span class="nav-badge">3</span>
+      </a>
+
+      <a href="/pipeline" class="nav-item {% if request.url.path == '/pipeline' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+        Pipeline
+      </a>
+
+      <a href="/activities" class="nav-item {% if request.url.path == '/activities' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+        Activities
+      </a>
+
+      <div class="nav-label">Analytics</div>
+
+      <a href="/reports" class="nav-item {% if request.url.path == '/reports' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
+        Reports
+      </a>
+
+      <div class="nav-label">Settings</div>
+
+      <a href="/automation" class="nav-item {% if request.url.path == '/automation' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" /></svg>
+        Automation
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar-row">
+        <div class="avatar">AK</div>
+        <div class="avatar-info">
+          <div class="avatar-name">Arjun Kapoor</div>
+          <div class="avatar-role">Sales Director</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title">{% block page_header %}Pipeline OS{% endblock %}</div>
+
+      <div class="topbar-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+        <span>Search contacts, deals…</span>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn btn-ghost">Filter</button>
+        <button class="btn btn-primary" hx-get="/modal/add_deal" hx-target="body" hx-swap="beforeend">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+          Add Deal
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  {% block scripts %}{% endblock %}
+
+</body>
+
+</html>

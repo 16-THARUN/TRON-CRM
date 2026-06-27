@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}NexusCRM — Contact Intelligence{% endblock %}
+{% block page_header %}Contact Intelligence{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">Lead Intelligence Database</div>
+      <div class="card-subtitle">Scored by Scikit-Learn GradientBoosting · {{ contacts|length }} records from PostgreSQL</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a href="/api/rescore" class="btn btn-ghost" style="font-size:12px;">🔁 Re-run ML Scorer</a>
+      <button class="btn btn-primary">+ Add Contact</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Lead</th>
+          <th>Segment</th>
+          <th>Status</th>
+          <th>ML Score</th>
+          <th>Deal Value</th>
+          <th>Signals</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contacts %}
+        <tr>
+          <td>
+            <div class="lead-name">{{ c.lead_name }}</div>
+            <div class="lead-company">{{ c.company_name }}</div>
+          </td>
+          <td>
+            <span class="tag {{ c.segment|lower|replace(' ','-') }}">{{ c.segment }}</span>
+          </td>
+          <td>
+            <span class="status-pill {{ c.status|lower }}">
+              <span class="dot" style="background:
+                {% if c.status == 'Hot' %}#F43F5E
+                {% elif c.status == 'Warm' %}#F59E0B
+                {% elif c.status == 'New' %}#10B981
+                {% else %}#93C5FD{% endif %};"></span>
+              {{ c.status }}
+            </span>
+          </td>
+          <td>
+            <div class="score-bar">
+              <div class="score-track">
+                <div class="score-fill" style="width:{{ c.score }}%;background:
+                  {% if c.score >= 80 %}#3B82F6
+                  {% elif c.score >= 60 %}#14B8A6
+                  {% else %}#6B7280{% endif %};"></div>
+              </div>
+              <span style="font-size:12px;font-weight:600;color:#F9FAFB;min-width:28px;">{{ c.score }}</span>
+            </div>
+          </td>
+          <td style="font-weight:600;color:#10B981;font-family:'Space Grotesk',sans-serif;">
+           ₹{{ "{:,.0f}".format(c.value) }}
+          </td>
+          <td>
+            <div style="font-size:11px;color:#6B7280;line-height:1.8;">
+              📧 {{ c.email_opens }} opens &nbsp;·&nbsp;
+              👁 {{ c.page_visits }} visits &nbsp;·&nbsp;
+              📞 {{ c.calls_made }} calls
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── ML SCORING EXPLAINER ──────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <div>
+      <div class="card-title">ML Lead Scoring — How It Works</div>
+      <div class="card-subtitle">GradientBoostingClassifier · services/scorer.py</div>
+    </div>
+    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(245,158,11,.12);color:#F59E0B;">Scikit-Learn</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#6B7280;margin-bottom:14px;">Feature Weights (6 signals)</div>
+      {% for feat, pct, color in [
+        ("Calls Made","38%","#3B82F6"),("Response Rate","28%","#14B8A6"),
+        ("Email Opens","14%","#8B5CF6"),("Page Visits","10%","#F59E0B"),
+        ("Deal Value","6%","#10B981"),("Segment Fit","4%","#F43F5E")] %}
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:12.5px;color:#9CA3AF;">{{ feat }}</span>
+          <span style="font-size:12.5px;font-weight:600;color:{{ color }};font-family:'Space Grotesk',sans-serif;">{{ pct }}</span>
+        </div>
+        <div style="height:4px;background:#1C2A40;border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:{{ pct }};background:{{ color }};border-radius:2px;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="background:#1C2A40;border-radius:10px;padding:18px;font-family:monospace;font-size:12px;color:#D1D5DB;line-height:2;">
+      <div style="color:#9CA3AF;margin-bottom:8px;"># app/services/scorer.py</div>
+      <div><span style="color:#60A5FA;">from</span> sklearn.ensemble <span style="color:#60A5FA;">import</span> GradientBoostingClassifier</div>
+      <div><span style="color:#60A5FA;">from</span> sklearn.preprocessing <span style="color:#60A5FA;">import</span> MinMaxScaler</div>
+      <div>&nbsp;</div>
+      <div><span style="color:#34D399;">model</span> = GradientBoostingClassifier(</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;n_estimators=<span style="color:#FBBF24;">200</span>,</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;learning_rate=<span style="color:#FBBF24;">0.08</span>,</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;max_depth=<span style="color:#FBBF24;">4</span></div>
+      <div>)</div>
+      <div>&nbsp;</div>
+      <div><span style="color:#9CA3AF;"># score = predict_proba * 100</span></div>
+      <div><span style="color:#34D399;">prob</span> = model.predict_proba(features)[<span style="color:#FBBF24;">0</span>][<span style="color:#FBBF24;">1</span>]</div>
+      <div><span style="color:#34D399;">score</span> = <span style="color:#A78BFA;">int</span>(round(prob * <span style="color:#FBBF24;">100</span>))</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

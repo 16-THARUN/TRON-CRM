@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}NexusCRM — Deal Pipeline{% endblock %}
+{% block page_header %}Sales Pipeline OS{% endblock %}
+
+{% block content %}
+<div class="card" style="flex: 1; display: flex; flex-direction: column;">
+
+    <div class="card-header">
+        <div>
+            <div class="card-title">PostgreSQL Synchronized Matrix</div>
+            <div class="card-subtitle">Click any deal card to trigger an ACID state progression</div>
+        </div>
+        <div class="card-action">
+            <span class="tag enterprise">Postgres Connected</span>
+        </div>
+    </div>
+
+    <div class="pipeline-cols" id="kanban-matrix">
+
+        {% for stage_name, col in matrix.items() %}
+        <div class="pipeline-col">
+
+            <div class="pipe-header">
+                <div class="pipe-stage">
+                    <div class="pipe-dot" style="background: {{ col.meta.color }};"></div>
+                    <span style="color: {{ col.meta.color }};">{{ stage_name }}</span>
+                </div>
+                <div class="pipe-count">{{ col.deals | length }}</div>
+            </div>
+
+            <div class="pipe-cards">
+                {% for deal in col.deals %}
+
+                <div class="deal-card"
+                    hx-post="/deal/advance/{{ deal.id }}"
+                    hx-target="#kanban-matrix"
+                    hx-select="#kanban-matrix"
+                    hx-swap="outerHTML"
+                    {% if stage_name == 'Closed' %}style="border-color: rgba(16,185,129,0.35);"{% endif %}>
+
+                    <div class="deal-company">{{ deal.company_name }}</div>
+                    <div class="deal-value">₹{{ "{:,.0f}".format(deal.value) }} · {{ deal.service_type }}</div>
+
+                    <div class="deal-footer">
+                        <div class="deal-avatars">
+                            <div class="deal-avatar" {% if deal.rep_initials == 'PR' %}style="background: #059669;"{% endif %}>
+                                {{ deal.rep_initials }}
+                            </div>
+                        </div>
+                        <span class="deal-prob" style="background: {{ col.meta.bg }}; color: {{ col.meta.color }};">
+                            {% if stage_name == 'Closed' %}Won ✓{% else %}{{ deal.win_probability }}%{% endif %}
+                        </span>
+                    </div>
+
+                </div>
+
+                {% endfor %}
+            </div>
+
+        </div>
+        {% endfor %}
+
+    </div>
+
+</div>
+{% endblock %}
