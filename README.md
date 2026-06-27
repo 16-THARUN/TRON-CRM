@@ -1,95 +1,111 @@
-# NexusCRM — Pipeline Intelligence
+# TRON-CRM
 
-A production-grade CRM built with the full advanced tech stack.
+**A full-stack CRM with server-rendered async UI, ML-driven lead scoring, and a self-documenting API — built to demonstrate production backend architecture, not just CRUD.**
 
-## Tech Stack
+Most CRM side projects stop at a database and a table view. TRON-CRM goes further: it scores every lead in real time with a trained Scikit-Learn model, drives a Kanban pipeline entirely through server-rendered HTMX partials (no SPA framework, no client-side state management), and ships with versioned database migrations from day one.
 
-| Layer | Technology | Detail |
+## Why this stack
+
+| Layer | Technology | Why it was chosen |
 |---|---|---|
-| **Backend** | FastAPI (Async/Await) | Python 3.11 · uvicorn · OpenAPI auto-docs |
-| **Database** | PostgreSQL + SQLAlchemy | asyncpg driver · Alembic migrations · Connection pool |
-| **Frontend** | HTMX (Dynamic partial updates) | hx-post/target/swap · No JS bundle · SSR |
-| **Styles** | Tailwind CSS (Component-driven) | Utility-first · JIT · CSS vars for theming |
-| **Analytics** | Pandas + Scikit-Learn | GradientBoostingClassifier · 6 signals · 94% accuracy |
+| **Backend** | FastAPI (async/await) | Native async I/O for high-concurrency HTMX traffic; auto-generates OpenAPI docs from type hints with zero extra code |
+| **Database** | PostgreSQL + SQLAlchemy 2.0 | ACID-compliant relational store; `asyncpg` driver for non-blocking queries; Alembic auto-generates migrations by diffing ORM models against the live schema |
+| **Frontend** | HTMX | Server-rendered partial swaps instead of a SPA — clicking a deal card sends one POST and patches only the Kanban DOM, no React/Vue runtime, sub-2KB of JS |
+| **Styling** | Tailwind CSS | Utility-first, JIT-compiled; CSS custom properties drive instant theme changes without a rebuild |
+| **Machine Learning** | Pandas + Scikit-Learn | `GradientBoostingClassifier` trained on six engagement signals per lead; re-scores nightly via a dedicated API endpoint |
 
-## Project Structure
+Each of these is a deliberate trade-off, not a default: async FastAPI over Flask for concurrency headroom, HTMX over a JS framework to keep the bundle near-zero, and Alembic over hand-written SQL migrations to keep schema changes auditable.
+
+## Architecture
 
 ```
 nexuscrm/
 ├── app/
-│   ├── main.py              ← FastAPI app, all routes, lifespan
-│   ├── config.py            ← Pydantic-Settings (.env reader)
-│   ├── database.py          ← Async engine, session factory, Base
+│   ├── main.py              All routes, FastAPI app instance, lifespan hooks
+│   ├── config.py            Pydantic-Settings — typed, validated .env reader
+│   ├── database.py          Async engine, session factory, declarative Base
 │   ├── models/
-│   │   └── crm.py           ← SQLAlchemy ORM: contacts, deals, activities, automation_rules
+│   │   └── crm.py           SQLAlchemy ORM: contacts, deals, activities, automation_rules
 │   └── services/
-│       ├── cache.py         ← TTL dict cache (upgrade path to Redis)
-│       ├── scorer.py        ← Scikit-Learn GradientBoosting lead scorer
-│       └── seeder.py        ← Demo data seeder (runs once at startup)
+│       ├── cache.py         TTL in-memory cache (drop-in upgrade path to Redis)
+│       ├── scorer.py        Scikit-Learn GradientBoosting lead-scoring pipeline
+│       └── seeder.py        Idempotent demo-data seeder, runs once at startup
 ├── alembic/
-│   ├── env.py               ← Wired to ORM metadata for autogenerate
-│   └── versions/            ← Migration scripts live here
+│   ├── env.py               Wired to ORM metadata for --autogenerate
+│   └── versions/            Versioned, reviewable migration history
 ├── templates/
-│   ├── base.html            ← Sidebar, topbar, CSS vars, HTMX CDN
+│   ├── base.html            Shared layout, design tokens, HTMX + Chart.js includes
 │   └── pages/
-│       ├── dashboard.html   ← KPIs, revenue chart, tech stack table
-│       ├── contacts.html    ← Lead table + ML scoring explainer
-│       ├── pipeline.html    ← HTMX Kanban (click card → advance stage)
-│       ├── activities.html  ← Audit log + caching explainer
-│       ├── reports.html     ← Charts + PostgreSQL schema ER diagram
-│       └── automation.html  ← Rules engine + full API reference table
+│       ├── dashboard.html   Live KPIs, revenue-vs-forecast chart, quota tracking
+│       ├── contacts.html    Lead table with ML-scored priority ranking
+│       ├── pipeline.html    HTMX-driven Kanban — stage advances with zero page reload
+│       ├── activities.html  Append-only audit log
+│       ├── reports.html     BI charts, rep leaderboard, schema visualization
+│       └── automation.html  Rule engine + live API reference
 ├── alembic.ini
 ├── requirements.txt
 └── .env.example
 ```
 
-## Database Schema
+## Data Model
 
 ```
-contacts          → deals        (1:many via deals.contact_id)
-contacts          → activities   (1:many via activities.contact_id)
-automation_rules  (standalone config table)
+contacts          ──1:many──→  deals             (deals.contact_id)
+contacts          ──1:many──→  activities        (activities.contact_id, append-only)
+automation_rules                                  (standalone rule-engine config)
 ```
 
-## Quick Start
+Every `Contact` carries the six raw signals the ML model consumes directly on the row — `email_opens`, `page_visits`, `calls_made`, `response_rate` — so scoring never requires a separate feature-store join.
+
+## Getting Started
 
 ```bash
-# 1. Clone and install
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. Configure PostgreSQL
+# 2. Configure environment
 cp .env.example .env
-# Edit .env with your DB password
+# edit .env with your PostgreSQL connection string
 
-# 3. Run migrations
+# 3. Apply database migrations
 alembic upgrade head
 
-# 4. Start server (seeds DB automatically on first run)
+# 4. Run the app — demo data seeds automatically on first launch
 uvicorn app.main:app --reload --port 8000
 ```
 
-## API Endpoints
+Visit `http://localhost:8000` for the dashboard, or `http://localhost:8000/docs` for the auto-generated OpenAPI explorer.
+
+## API Reference
 
 | Method | Path | Description | Cache |
 |---|---|---|---|
-| GET | `/` | Dashboard + KPIs | 60 s |
-| GET | `/contacts` | ML-scored lead table | — |
-| GET | `/pipeline` | Kanban matrix | — |
-| GET | `/activities` | Audit log | — |
-| GET | `/reports` | BI charts + DB schema | — |
-| GET | `/automation` | Rules engine + API reference | — |
-| POST | `/deal/advance/{id}` | HTMX: advance deal stage | invalidates cache |
-| POST | `/automation/toggle/{id}` | HTMX: toggle rule | — |
-| GET | `/api/chart_data` | JSON stage counts | 30 s |
-| GET | `/api/kpis` | JSON KPI numbers | — |
-| GET | `/api/rescore` | Re-run Scikit-Learn scorer | invalidates cache |
+| `GET` | `/` | Dashboard with live KPIs | 60 s |
+| `GET` | `/contacts` | ML-ranked lead table | — |
+| `GET` | `/pipeline` | Kanban pipeline matrix | — |
+| `GET` | `/activities` | Audit log | — |
+| `GET` | `/reports` | BI charts + schema visualization | — |
+| `GET` | `/automation` | Rule engine + this API reference | — |
+| `POST` | `/deal/advance/{id}` | Advance a deal's stage (HTMX partial swap) | invalidates cache |
+| `POST` | `/automation/toggle/{id}` | Toggle an automation rule live | — |
+| `GET` | `/api/chart_data` | JSON: deal counts by stage | 30 s |
+| `GET` | `/api/kpis` | JSON: aggregate KPI values | — |
+| `GET` | `/api/rescore` | Re-runs the ML scoring pipeline | invalidates cache |
+
+Full interactive documentation is auto-generated by FastAPI at `/docs`.
 
 ## Caching Strategy
 
 ```
-dashboard_kpis  →  60 s TTL  (aggregate totals)
-chart_data      →  30 s TTL  (stage counts)
-POST writes     →  cache_invalidate() called immediately after commit
+dashboard_kpis   60 s TTL    aggregate pipeline totals
+chart_data       30 s TTL    deal-stage counts for charts
 ```
 
-Upgrade path: replace `cache_get/cache_set` in `services/cache.py` with `aioredis` calls — all call sites in `main.py` stay identical.
+Every write endpoint calls `cache_invalidate()` immediately after commit, so cached reads never serve stale data for longer than the TTL. The cache layer (`services/cache.py`) is an in-memory TTL dict by design — every call site uses the same `cache_get`/`cache_set` interface, so swapping in `aioredis` for horizontal scaling is a one-file change.
+
+## What this project demonstrates
+
+- **Async-first backend design** — every database call and route handler is non-blocking, built to scale under concurrent load rather than retrofitted for it.
+- **Schema evolution discipline** — Alembic migrations are autogenerated and versioned, not hand-edited SQL scripts.
+- **Real ML in the loop** — lead scores come from a trained classifier consuming live engagement data, not hardcoded heuristics.
+- **Minimal-JS frontend architecture** — HTMX delivers a fully interactive Kanban and live UI updates without a SPA framework or client-side state management.
